@@ -14,7 +14,7 @@ dependencies {
     // log4j
     compile 'org.slf4j:slf4j-api:1.7.20'
     // iopj
-    compile project(':iopj-core-0.14.3')
+    compile project(':bitcoinj-core-0.14.3')
     // iopj dependencies
     compile group: 'com.google.guava', name: 'guava', version: '20.0'
     compile 'com.madgag.spongycastle:core:1.54.0.0'

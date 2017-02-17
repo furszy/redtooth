@@ -1,0 +1,3 @@
+rootProject.name = 'IoP-SDK'
+include 'iopj-core-0.14.3'
+

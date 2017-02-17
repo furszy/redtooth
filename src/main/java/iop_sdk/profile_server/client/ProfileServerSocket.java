@@ -100,10 +100,14 @@ public class ProfileServerSocket implements IoSession<IopProfileServer.Message> 
             count = socket.getInputStream().read(buffer);
             logger.info("Reciving data..");
             IopProfileServer.MessageWithHeader message1 = null;
-            ByteBuffer byteBufferToRead = ByteBuffer.allocate(count);
-            byteBufferToRead.put(buffer,0,count);
-            message1 = IopProfileServer.MessageWithHeader.parseFrom(byteBufferToRead.array());
-            handler.messageReceived(this,message1.getBody());
+            if (count>0) {
+                ByteBuffer byteBufferToRead = ByteBuffer.allocate(count);
+                byteBufferToRead.put(buffer, 0, count);
+                message1 = IopProfileServer.MessageWithHeader.parseFrom(byteBufferToRead.array());
+                handler.messageReceived(this, message1.getBody());
+            }else {
+                // todo: ver porqué se vá por acá
+            }
         } catch (InvalidProtocolBufferException e) {
 //                throw new InvalidProtocolViolation("Invalid message",e);
             e.printStackTrace();

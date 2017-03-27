@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/iop_sdk.iml" filepath="$PROJECT_DIR$/.idea/modules/iop_sdk.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/iop_sdk_main.iml" filepath="$PROJECT_DIR$/.idea/modules/iop_sdk_main.iml" group="iop_sdk" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/iop_sdk_test.iml" filepath="$PROJECT_DIR$/.idea/modules/iop_sdk_test.iml" group="iop_sdk" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/iopj/iopj.iml" filepath="$PROJECT_DIR$/.idea/modules/iopj/iopj.iml" group="iopj" />
+    </modules>
+  </component>
+</project>

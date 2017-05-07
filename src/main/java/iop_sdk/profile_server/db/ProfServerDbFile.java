@@ -1,8 +1,9 @@
 package iop_sdk.profile_server.db;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.File;
+import java.util.concurrent.ConcurrentMap;
 
+import iop_sdk.profile_server.ProfileServerConfigurations;
 import iop_sdk.profile_server.engine.ProfSerDb;
 
 /**
@@ -11,19 +12,55 @@ import iop_sdk.profile_server.engine.ProfSerDb;
 
 public class ProfServerDbFile implements ProfSerDb {
 
-    private Map<String,String> registered;
+    private final String MAP_PROFILE_REGISTRATION = "profilesRegistrationMap";
 
-    public ProfServerDbFile() {
-        this.registered = new HashMap<>();
+    private String dbFileName;
+
+    //private Map<String,String> registered;
+
+    public ProfServerDbFile(File dir) {
+        //this.registered = new HashMap<>();
+        dbFileName = dir.getAbsolutePath()+"/prof_ser_db";
     }
 
     @Override
     public void setProfileRegistered(String host, String profilePublicKey) {
-        registered.put(profilePublicKey,host);
+//        registered.put(profilePublicKey,host);
+//        DB db = DBMaker.fileDB(dbFileName).make();
+//        ConcurrentMap map = db.hashMap(MAP_PROFILE_REGISTRATION).createOrOpen();
+//        map.put(profilePublicKey,host);
+//        db.close();
+    }
+
+    @Override
+    public void removeProfileRegistered(String profilePublicKey, String host) {
+//        DB db = DBMaker.fileDB(dbFileName).make();
+//        ConcurrentMap map = db.hashMap(MAP_PROFILE_REGISTRATION).createOrOpen();
+//        if(map.containsKey(profilePublicKey)){
+//            if (map.get(profilePublicKey).equals(host)){
+//                map.remove(profilePublicKey);
+//            }
+//        }
+//        db.close();
     }
 
     @Override
     public boolean isRegistered(String host, String profilePublicKey) {
-        return (registered.containsKey(profilePublicKey)) && registered.get(profilePublicKey).equals(host);
+//        DB db = DBMaker.fileDB(dbFileName).make();
+//        ConcurrentMap map = db.hashMap(MAP_PROFILE_REGISTRATION).createOrOpen();
+//        boolean isRegister = map.containsKey(profilePublicKey) && map.get(profilePublicKey).equals(host);
+//        db.close();
+//        return isRegister;
+        return false;
+    }
+
+    @Override
+    public void setClPort(int port) {
+
+    }
+
+    @Override
+    public void setNonClPort(int port) {
+
     }
 }

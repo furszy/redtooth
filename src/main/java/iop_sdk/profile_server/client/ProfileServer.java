@@ -44,15 +44,15 @@ public interface ProfileServer {
 
     int checkIn(byte[] signedChallenge, Signer signer) throws Exception;
 
-    int updateProfileRequest(Signer signer, byte[] version, String name, byte[] img, int latitude, int longitude, String extraData) throws Exception;
+    ProfSerRequest updateProfileRequest(Signer signer, byte[] version, String name, byte[] img, int latitude, int longitude, String extraData) throws Exception;
 
-    int updateExtraData(Signer signer, String extraData) throws Exception;
+    ProfSerRequest updateExtraData(Signer signer, String extraData) throws Exception;
 
     /**
      * Search request
      */
 
-    int searchProfilesRequest(boolean onlyHostedProfiles,
+    ProfSerRequest searchProfilesRequest(boolean onlyHostedProfiles,
                               boolean includeThumbnailImages,
                               int maxResponseRecordCount,
                               int maxTotalRecordCount,
@@ -60,7 +60,7 @@ public interface ProfileServer {
                               String profileName,
                               String extraData) throws CantConnectException, CantSendMessageException;
 
-    int searchProfilesRequest(boolean onlyHostedProfiles,
+    ProfSerRequest searchProfilesRequest(boolean onlyHostedProfiles,
                               boolean includeThumbnailImages,
                               int maxResponseRecordCount,
                               int maxTotalRecordCount,
@@ -70,6 +70,8 @@ public interface ProfileServer {
                               int longitude,
                               int radius,
                               String extraData) throws CantConnectException, CantSendMessageException;
+
+    ProfSerRequest searchProfilePartRequest(int recordIndex, int recordCount) throws CantConnectException, CantSendMessageException;
 
     int addApplcationService(String applicationService) throws CantConnectException, CantSendMessageException;
 

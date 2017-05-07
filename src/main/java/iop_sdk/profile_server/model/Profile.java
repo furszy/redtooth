@@ -125,4 +125,9 @@ public class Profile implements Signer {
     public List<String> getApplicationServices() {
         return applicationServices;
     }
+
+    public Object getKey() {
+        return keyEd25519;
+    }
+
 }

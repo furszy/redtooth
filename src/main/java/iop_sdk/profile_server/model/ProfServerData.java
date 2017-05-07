@@ -31,6 +31,12 @@ public class ProfServerData {
         this.nonCustPort = nonCustPort;
     }
 
+    public ProfServerData(String host, int clPort, int nonClPort) {
+        this.host = host;
+        this.custPort = clPort;
+        this.nonCustPort = nonClPort;
+    }
+
     public String getHost() {
         return host;
     }

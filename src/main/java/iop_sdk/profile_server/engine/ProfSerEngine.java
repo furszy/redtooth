@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -22,9 +23,12 @@ import iop_sdk.profile_server.IoSession;
 import iop_sdk.profile_server.SslContextFactory;
 import iop_sdk.profile_server.client.ProfNodeConnection;
 import iop_sdk.profile_server.client.ProfSerImp;
+import iop_sdk.profile_server.client.ProfSerRequest;
 import iop_sdk.profile_server.client.ProfileServer;
 import iop_sdk.profile_server.db.ProfServerDbFile;
 import iop_sdk.profile_server.engine.listeners.ProfSerMsgListener;
+import iop_sdk.profile_server.engine.listeners.ProfSerMsgListenerBase;
+import iop_sdk.profile_server.engine.listeners.ProfSerPartSearchListener;
 import iop_sdk.profile_server.model.ProfServerData;
 import iop_sdk.profile_server.model.Profile;
 import iop_sdk.profile_server.processors.MessageProcessor;
@@ -67,11 +71,12 @@ public class ProfSerEngine {
     private ProfSerDb profSerDb;
     /** Internal server handler */
     private ProfileServerHanlder handler;
-    /** Engine listener*/
+    /** Engine listenerv*/
     private final CopyOnWriteArrayList<EngineListener> engineListeners = new CopyOnWriteArrayList<>();
     /** Messages listeners:  id -> listner */
-    private final ConcurrentMap<Integer,ProfSerMsgListener> msgListeners = new ConcurrentHashMap<>();
-
+    private final ConcurrentMap<Integer,ProfSerMsgListenerBase> msgListeners = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String,SearchProfilesQuery> profilesQuery = new ConcurrentHashMap<>();
+    /***/
     private ExecutorService executor;
 
     /**
@@ -100,9 +105,9 @@ public class ProfSerEngine {
      * @param profServerData
      * @param profile -> use a profile for the restriction of 1 per connection that the server have.
      */
-    public ProfSerEngine(ContextWrapper contextWrapper,ProfServerData profServerData, Profile profile, CryptoWrapper crypto,SslContextFactory sslContextFactory) throws Exception {
-        this(contextWrapper,new ProfServerDbFile(),profServerData,profile,crypto,sslContextFactory);
-    }
+//    public ProfSerEngine(ContextWrapper contextWrapper,ProfServerData profServerData, Profile profile, CryptoWrapper crypto,SslContextFactory sslContextFactory) throws Exception {
+//        this(contextWrapper,new ProfServerDbFile(contextWrapper.getDirPrivateMode("/")),profServerData,profile,crypto,sslContextFactory);
+//    }
 
     /**
      * Creates a random challenge for the connection.
@@ -161,12 +166,12 @@ public class ProfSerEngine {
     /**
      * Update the existing profile in the server
      */
-    public int updateProfile(byte[] version,String name,byte[] img,int lat,int lon,String extraData){
-        LOG.info("updateProfileRequest, state: "+profSerConnectionState);
+    public int updateProfile(byte[] version,String name,byte[] img,int lat,int lon,String extraData,ProfSerMsgListenerBase listener){
+        LOG.info("updateProfile, state: "+profSerConnectionState);
         int msgId = 0;
         if (profSerConnectionState == CHECK_IN){
             try{
-                msgId = profileServer.updateProfileRequest(
+                ProfSerRequest profSerRequest = profileServer.updateProfileRequest(
                         profNodeConnection.getProfile(),
                         version,
                         name,
@@ -175,6 +180,9 @@ public class ProfSerEngine {
                         lon,
                         extraData
                 );
+                msgId = profSerRequest.getMessageId();
+                msgListeners.put(msgId,listener);
+                profSerRequest.send();
             }catch (Exception e){
                 e.printStackTrace();
             }
@@ -194,9 +202,11 @@ public class ProfSerEngine {
      */
     public void searchProfileByName(String name, ProfSerMsgListener<List<IopProfileServer.IdentityNetworkProfileInformation>> listener){
         try {
+            ProfSerRequest request = profileServer.searchProfilesRequest(false,false,100,10000,null,name,null);
             msgListeners.put(
-                    profileServer.searchProfilesRequest(false,false,100,10000,null,name,null),
+                    request.getMessageId(),
                     listener);
+            request.send();
         } catch (CantConnectException e) {
             e.printStackTrace();
         } catch (CantSendMessageException e) {
@@ -204,9 +214,14 @@ public class ProfSerEngine {
         }
     }
 
-    public void searchProfileByNameAndType(String name,String type){
+    public void searchProfileByNameAndType(String name,String type, ProfSerMsgListener<List<IopProfileServer.IdentityNetworkProfileInformation>> listener){
         try {
-            profileServer.searchProfilesRequest(false,false,100,10000,type,name,null);
+            ProfSerRequest request = profileServer.searchProfilesRequest(false,false,100,10000,type,name,null);
+            msgListeners.put(
+                    request.getMessageId(),
+                    listener
+            );
+            request.send();
         } catch (CantConnectException e) {
             e.printStackTrace();
         } catch (CantSendMessageException e) {
@@ -214,14 +229,70 @@ public class ProfSerEngine {
         }
     }
 
-    public void searchProfiles(boolean onlyHostedProfiles,
-                               boolean includeThumbnailImages,
-                               int maxResponseRecordCount,
-                               int maxTotalRecordCount,
-                               String profileType,
-                               String profileName,
-                               String extraData){
+    /**
+     * todo: fijarse si a este searchProfilesQuery le deberia poner un id para busquedas siguientes..
+     * @param searchProfilesQuery
+     * @param listener
+     */
+    public void searchProfiles(SearchProfilesQuery searchProfilesQuery, ProfSerMsgListener<List<IopProfileServer.IdentityNetworkProfileInformation>> listener){
+        try {
+            cacheSearch(searchProfilesQuery);
+            ProfSerRequest request = profileServer.searchProfilesRequest(
+                    searchProfilesQuery.isOnlyHostedProfiles(),
+                    searchProfilesQuery.isIncludeThumbnailImages(),
+                    searchProfilesQuery.getMaxResponseRecordCount(),
+                    searchProfilesQuery.getMaxTotalRecordCount(),
+                    searchProfilesQuery.getProfileType(),
+                    searchProfilesQuery.getProfileName(),
+                    searchProfilesQuery.getLatitude(),
+                    searchProfilesQuery.getLongitude(),
+                    searchProfilesQuery.getRadius(),
+                    searchProfilesQuery.getExtraData()
+            );
+            msgListeners.put(
+                    request.getMessageId(),
+                    listener
+            );
+            request.send();
+        } catch (CantConnectException e) {
+            e.printStackTrace();
+        } catch (CantSendMessageException e) {
+            e.printStackTrace();
+        }
+    }
 
+    /**
+     * This method works after call searchProfile when the previous amount of result is less than the maxTotalRecordCount. Responding with a part of the entire search.
+     *
+     */
+    public void searchSubsequentProfiles(SearchProfilesQuery searchProfilesQuery,ProfSerPartSearchListener<List<IopProfileServer.IdentityNetworkProfileInformation>> listener){
+        searchProfilesQuery.setRecordIndex(searchProfilesQuery.getRecordIndex()+1);
+        updateCacheSearch(searchProfilesQuery);
+        try{
+            ProfSerRequest request = profileServer.searchProfilePartRequest(searchProfilesQuery.getRecordIndex(),searchProfilesQuery.getRecordCount());
+            msgListeners.put(
+                    request.getMessageId(),
+                    listener
+            );
+            request.send();
+        } catch (CantSendMessageException e) {
+            e.printStackTrace();
+        } catch (CantConnectException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void cacheSearch(SearchProfilesQuery searchProfilesQuery){
+        String id = UUID.randomUUID().toString();
+        searchProfilesQuery.setId(id);
+        profilesQuery.put(id,searchProfilesQuery);
+    }
+
+    private void updateCacheSearch(SearchProfilesQuery searchProfilesQuery){
+        if (profilesQuery.containsKey(searchProfilesQuery.getId())){
+            profilesQuery.remove(searchProfilesQuery.getId());
+            profilesQuery.put(searchProfilesQuery.getId(),searchProfilesQuery);
+        }
     }
 
 
@@ -246,6 +317,8 @@ public class ProfSerEngine {
                 startConverNonClPort();
                 // Request home node request
                 requestHomeNodeRequest();
+            }else {
+                profSerConnectionState = HAS_ROLE_LIST;
             }
 
             if (profNodeConnection.isRegistered()){
@@ -397,7 +470,13 @@ public class ProfSerEngine {
                     profile.getImg(),
                     profile.getLatitude(),
                     profile.getLongitude(),
-                    profile.getExtraData()
+                    profile.getExtraData(),
+                    new ProfSerMsgListenerBase() {
+                        @Override
+                        public void onMsgFail(int messageId, int statusValue, String details) {
+                            LOG.error("update profile fail, detail: "+details);
+                        }
+                    }
             );
             // register application services
             for (String service : profile.getApplicationServices()) {
@@ -426,6 +505,7 @@ public class ProfSerEngine {
         private static final int HOME_UPDATE_PROFILE_PROCESSOR = 6;
         private static final int HOME_PROFILE_SEARCH_PROCESSOR = 7;
         private static final int HOME_ADD_APPLICATION_SERVICE_PROCESSOR = 8;
+        private static final int HOME_PART_PROFILE_SEARCH_PROCESSOR = 9;
 
         private Map<Integer,MessageProcessor> processors;
 
@@ -439,6 +519,7 @@ public class ProfSerEngine {
             processors.put(HOME_UPDATE_PROFILE_PROCESSOR,new UpdateProfileConversationProcessor());
             processors.put(HOME_PROFILE_SEARCH_PROCESSOR,new ProfileSearchProcessor());
             processors.put(HOME_ADD_APPLICATION_SERVICE_PROCESSOR,new AddApplicationServiceProcessor());
+            processors.put(HOME_PART_PROFILE_SEARCH_PROCESSOR,new PartProfileSearchProcessor());
         }
 
         @Override
@@ -516,7 +597,8 @@ public class ProfSerEngine {
                             break;
 
                         default:
-                            throw new Exception("response with CONVERSATIONTYPE_NOT_SET, response: "+response.toString());
+                            msgListeners.get(messageId).onMsgFail(messageId,response.getStatusValue(),response.getDetails());
+                            throw new Exception("response with CONVERSATIONTYPE_NOT_SET, response: "+response.toString()+", message id: "+messageId);
                     }
                     // engine
                     engine();
@@ -572,6 +654,9 @@ public class ProfSerEngine {
                     LOG.info("profile search response ");
                     processors.get(HOME_PROFILE_SEARCH_PROCESSOR).execute(messageId,conversationResponse.getProfileSearch());
                     break;
+                case PROFILESEARCHPART:
+                    processors.get(HOME_PART_PROFILE_SEARCH_PROCESSOR).execute(messageId,conversationResponse.getProfileSearchPart());
+                    break;
                 case APPLICATIONSERVICEADD:
                     LOG.info("add application service");
                     processors.get(HOME_ADD_APPLICATION_SERVICE_PROCESSOR).execute(messageId,conversationResponse.getApplicationServiceAdd());
@@ -622,6 +707,10 @@ public class ProfSerEngine {
             }catch (Exception e){
                 e.printStackTrace();
             }
+            // save ports
+            profSerDb.setClPort(profServerData.getCustPort());
+            profSerDb.setNonClPort(profServerData.getNonCustPort());
+
             LOG.info("ListRolesProcessor no cl port: "+ profServerData.getNonCustPort());
             engine();
         }
@@ -729,9 +818,29 @@ public class ProfSerEngine {
             }
             LOG.info(stringBuilder.toString());
 
-            msgListeners.get(messageId).onMessageReceive(messageId,message.getProfilesList());
+            ((ProfSerMsgListener)msgListeners.get(messageId)).onMessageReceive(messageId,message.getProfilesList());
             msgListeners.remove(messageId);
 
+        }
+    }
+
+    /**
+     *
+     * Specific Error Responses:
+     * ERROR_NOT_AVAILABLE - No cached search results are available. Either the client did not send ProfileSearchRequest previously
+                              in this session, or its results have expired already.
+     * ERROR_INVALID_VALUE
+     * Response.details == "recordIndex" - 'ProfileSearchRequest.recordIndex' is not a valid index of the result.
+     * Response.details == "recordCount" - 'ProfileSearchRequest.recordCount' is not a valid number of results to obtain in combination with 'ProfileSearchRequest.recordIndex'.
+     *
+     */
+
+    private class PartProfileSearchProcessor implements MessageProcessor<IopProfileServer.ProfileSearchPartResponse>{
+
+        @Override
+        public void execute(int messageId, IopProfileServer.ProfileSearchPartResponse message) {
+            LOG.info("PartProfileSearchProcessor execute..");
+            ((ProfSerPartSearchListener)msgListeners.get(messageId)).onMessageReceive(messageId,message.getProfilesList(),message.getRecordIndex(),message.getRecordCount());
         }
     }
 

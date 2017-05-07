@@ -92,7 +92,7 @@ public class ProfileServerSocket implements IoSession<IopProfileServer.Message> 
         return overhead;
     }
 
-    private void read(){
+    private synchronized void read(){
         int count;
         byte[] buffer = new byte[8192];
         try {
@@ -160,9 +160,10 @@ public class ProfileServerSocket implements IoSession<IopProfileServer.Message> 
             try {
 
                 for (;;) {
-                    if (!socket.isClosed())
+                    if (!socket.isClosed()) {
                         read();
-                    else {
+                        TimeUnit.SECONDS.sleep(5);
+                    } else {
                         TimeUnit.SECONDS.sleep(3);
                     }
                 }

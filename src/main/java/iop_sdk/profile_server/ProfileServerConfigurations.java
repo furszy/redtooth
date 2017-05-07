@@ -1,11 +1,15 @@
 package iop_sdk.profile_server;
 
 
+import java.io.File;
+
+import iop_sdk.profile_server.engine.ProfSerDb;
+
 /**
  * Created by mati on 25/12/16.
  */
 
-public interface ProfileServerConfigurations {
+public interface ProfileServerConfigurations extends ProfSerDb{
 
     public String getHost();
 
@@ -62,6 +66,7 @@ public interface ProfileServerConfigurations {
     public void setIsRegistered(boolean isRegistered);
 
     public void setIsCreated(boolean isCreated);
-    
-    
+
+
+    File getUserImageFile();
 }

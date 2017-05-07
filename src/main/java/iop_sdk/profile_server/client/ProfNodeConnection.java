@@ -20,8 +20,6 @@ public class ProfNodeConnection {
     private byte[] nodeChallenge;
     /** Node's identity */
     private byte[] nodePubKey;
-
-
     /*  **/
     private boolean needRegisterProfile;
 

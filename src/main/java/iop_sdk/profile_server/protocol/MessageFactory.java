@@ -188,9 +188,9 @@ public class MessageFactory {
             updateProfileRequest.setLatitude(latitude);
             updateProfileRequest.setLongitude(longitude);
 //        }else {
-//            updateProfileRequest.setSetLocation(false);
-//            updateProfileRequest.setLongitude(0xFFFFFFFF);
-//            updateProfileRequest.setLatitude(0xFFFFFFFF);
+//            updateProfile.setSetLocation(false);
+//            updateProfile.setLongitude(0xFFFFFFFF);
+//            updateProfile.setLatitude(0xFFFFFFFF);
 //        }
 
         if (extraData!=null && !extraData.equals("")){
@@ -300,6 +300,24 @@ public class MessageFactory {
         return buildMessage(builder);
     }
 
+    /**
+     * Request to get another part from the search query.
+     * This request only makes sense only if the client previously sent ProfileSearchRequest to
+     * the profile server and the search result contained more records than the server provided
+     * in the ProfileSearchResponse, and the search results have not expired yet.
+     *
+     * @param recordIndex   Zero-based record index of the first result to retrieve. It has to be an integer between 0 and 'ProfileSearchResponse.totalRecordCount' - 1.
+     * @param  recordCount  Number of results to obtain. 'recordIndex' + 'recordCount' must not be greater than 'ProfileSearchResponse.totalRecordCount'.
+     * If 'ProfileSearchResponse.includeThumbnailImages' was set, this has to be an integer between 1 and 100,
+     * otherwise it has to be an integer between 1 and 1,000.
+     */
+
+    public static IopProfileServer.Message buildSearcProfilePartRequest(int recordIndex, int recordCount) {
+
+        IopProfileServer.ProfileSearchPartRequest.Builder builder = IopProfileServer.ProfileSearchPartRequest.newBuilder().setRecordIndex(recordIndex).setRecordCount(recordCount);
+        return buildMessage(builder);
+    }
+
     public static IopProfileServer.Message buildApplicationServiceAddRequest(String serviceName){
         IopProfileServer.ApplicationServiceAddRequest.Builder builder = IopProfileServer.ApplicationServiceAddRequest.newBuilder();
         builder.addServiceNames(serviceName);
@@ -382,6 +400,10 @@ public class MessageFactory {
 
     private static IopProfileServer.Message buildMessage(IopProfileServer.ProfileSearchRequest.Builder builder) {
         return buildMessage(IopProfileServer.ConversationRequest.newBuilder().setProfileSearch(builder));
+    }
+
+    private static IopProfileServer.Message buildMessage(IopProfileServer.ProfileSearchPartRequest.Builder builder) {
+        return buildMessage(IopProfileServer.ConversationRequest.newBuilder().setProfileSearchPart(builder));
     }
 
     private static IopProfileServer.Message buildMessage(IopProfileServer.ApplicationServiceAddRequest.Builder builder) {

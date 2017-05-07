@@ -11,8 +11,16 @@ public interface ProfSerDb {
      * //todo: here i have to add more field like the timestamp, regiter plan, etc. to know when the user has to pay.
      * */
     void setProfileRegistered(String host, String profilePublicKey);
+
+    void removeProfileRegistered(String profilePublicKey,String host);
+
     /**  */
     boolean isRegistered(String host, String profilePublicKey);
 
 
+
+    // ports
+
+    void setClPort(int port);
+    void setNonClPort(int port);
 }
